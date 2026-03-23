@@ -30,7 +30,7 @@ Frontend → /api/cafes?bbox=53.5,9.9,53.6,10.1
 - `Cache-Control: s-maxage=3600, stale-while-revalidate=86400` — 1h fresh, 24h stale-while-revalidate
 - Zero dependencies, plain `fetch()` to Overpass
 - Frontend changes only the Overpass URL to `/api/cafes?bbox=...`
-- Fallback: if function is down, frontend falls back to direct Overpass
+- No direct Overpass fallback — CDN stale-while-revalidate (24h) + service worker cache provide sufficient resilience. Error toast on failure.
 
 ### 2. Shareable Links (URL State)
 
