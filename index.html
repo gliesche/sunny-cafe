@@ -270,22 +270,20 @@ async function tryLoadEnriched() {
   }
 }
 
-// ── Overpass API ───────────────────────────────
-async function fetchOverpass(query, retries = 2) {
-  const url = 'https://overpass-api.de/api/interpreter';
+// ── Cafe API ──────────────────────────────────
+async function fetchCafes(bbox, retries = 2) {
+  const rounded = bbox.split(',').map(n => parseFloat(n).toFixed(3)).join(',');
+  const url = `/api/cafes?bbox=${rounded}`;
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const res = await fetch(url, {
-      method: 'POST',
-      body: 'data=' + encodeURIComponent(query)
-    });
+    const res = await fetch(url);
     if ((res.status === 429 || res.status === 504) && attempt < retries) {
       const wait = (attempt + 1) * 4000;
-      showToast(`Overpass API überlastet — neuer Versuch in ${wait/1000}s...`, 'warn');
+      showToast(`API überlastet — neuer Versuch in ${wait/1000}s...`, 'warn');
       await new Promise(r => setTimeout(r, wait));
       continue;
     }
     if (res.status === 429) throw new Error('rate-limit');
-    if (!res.ok) throw new Error('Overpass API error: ' + res.status);
+    if (!res.ok) throw new Error('API error: ' + res.status);
     return res.json();
   }
 }
@@ -363,18 +361,7 @@ async function loadData() {
   showLoading(true);
 
   try {
-    // Single combined query: cafés first, then streets only near those cafés
-    const data = await fetchOverpass(`
-      [out:json][timeout:30];
-      (
-        node["amenity"="cafe"]["outdoor_seating"](${bbox});
-        way["amenity"="cafe"]["outdoor_seating"](${bbox});
-      )->.cafes;
-      .cafes out center body;
-      way["highway"~"^(residential|tertiary|secondary|primary|pedestrian|living_street|unclassified)$"](around.cafes:80)->.streets;
-      .streets out geom;
-    `);
-
+    const data = await fetchCafes(bbox);
     setCache(cacheKey, data);
     processData(data);
   } catch (err) {

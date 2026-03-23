@@ -1,4 +1,4 @@
-const CACHE = 'sunny-cafe-v1';
+const CACHE = 'sunny-cafe-v2';
 const PRECACHE = ['/', '/favicon.svg'];
 
 self.addEventListener('install', e => {
@@ -17,7 +17,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   // Network-first for API calls, cache-first for assets
-  if (e.request.url.includes('overpass-api') || e.request.url.includes('nominatim')) {
+  if (e.request.url.includes('/api/') || e.request.url.includes('nominatim')) {
     e.respondWith(
       fetch(e.request).catch(() => caches.match(e.request))
     );
