@@ -54,10 +54,10 @@
   .sun-times { font-size: 12px; color: #555; display: flex; justify-content: space-between; }
 
   .cloud-badge {
-    display: inline-block; margin-left: 10px; padding: 2px 8px;
-    border-radius: 6px; font-size: 12px; font-weight: 500;
+    display: inline-block; padding: 3px 10px;
+    border-radius: 8px; font-size: 14px; font-weight: 500;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
-    vertical-align: middle; transition: opacity 0.3s, color 0.3s;
+    transition: opacity 0.3s, color 0.3s;
   }
   .cloud-badge.unavailable { opacity: 0.3; color: #555; }
   .cloud-badge.low { color: #4CAF50; }
@@ -75,7 +75,8 @@
     box-shadow: 0 0 10px rgba(255,215,0,0.4); cursor: grab;
   }
   @media (max-width: 767px) {
-    input[type="range"]::-webkit-slider-thumb { width: 44px; height: 44px; }
+    input[type="range"] { height: 44px; }
+    input[type="range"]::-webkit-slider-thumb { width: 32px; height: 32px; }
   }
 
   .now-btn {
@@ -85,17 +86,14 @@
   }
   .now-btn:hover { background: rgba(255,215,0,0.1); }
 
-  /* Legend */
-  .legend {
-    position: absolute; bottom: 120px; left: 16px; z-index: 1000;
-    background: rgba(15,15,26,0.92); backdrop-filter: blur(16px);
-    border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
-    padding: 10px 14px; font-size: 12px; line-height: 1.8;
+  /* Legend (integrated into time panel) */
+  .time-legend {
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.05);
   }
-  .legend-item { display: flex; align-items: center; gap: 8px; }
-  .legend-dot {
-    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-  }
+  .time-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #999; }
+  .time-legend-filter { margin-left: auto; cursor: pointer; }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
 
   /* Sun compass */
   .sun-compass {
@@ -309,15 +307,6 @@
   <strong id="cafeCount">0</strong> Cafes geladen
 </div>
 
-<div class="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div> Sonnig</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div> Teilweise</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#78909C"></div> Schatten</div>
-  <label class="legend-item" style="cursor:pointer;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06)">
-    <input type="checkbox" id="filterClosed" checked style="accent-color:#FFD700" onchange="updateSunnyScores()">
-    <span>Geschlossene ausblenden</span>
-  </label>
-</div>
 
 <div id="map"></div>
 
@@ -326,15 +315,26 @@
     <div>
       <span class="time-value" id="timeValue">--:--</span>
       <span class="time-date" id="dateValue" style="cursor:pointer" onclick="document.getElementById('datePicker').showPicker()"></span>
-      <span class="cloud-badge" id="cloudBadge" title="Bewölkung"></span>
       <input type="date" id="datePicker" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0">
     </div>
-    <button class="now-btn" onclick="setNow()">Jetzt</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="cloud-badge" id="cloudBadge" title="Bewölkung"></span>
+      <button class="now-btn" onclick="setNow()">Jetzt</button>
+    </div>
   </div>
   <input type="range" id="timeSlider" min="0" max="1440" step="5" />
   <div class="sun-times">
     <span id="sunriseLabel">Aufgang --:--</span>
     <span id="sunsetLabel">Untergang --:--</span>
+  </div>
+  <div class="time-legend">
+    <span class="time-legend-item"><span class="legend-dot" style="background:#4CAF50"></span>Sonnig</span>
+    <span class="time-legend-item"><span class="legend-dot" style="background:#FF9800"></span>Teilweise</span>
+    <span class="time-legend-item"><span class="legend-dot" style="background:#78909C"></span>Schatten</span>
+    <label class="time-legend-item time-legend-filter">
+      <input type="checkbox" id="filterClosed" checked style="accent-color:#FFD700" onchange="updateSunnyScores()">
+      Geschl. ausbl.
+    </label>
   </div>
 </div>
 
