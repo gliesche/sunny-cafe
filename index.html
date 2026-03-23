@@ -53,15 +53,29 @@
   .time-date { font-size: 13px; color: #666; margin-left: 8px; }
   .sun-times { font-size: 12px; color: #555; display: flex; justify-content: space-between; }
 
+  .cloud-badge {
+    display: inline-block; margin-left: 10px; padding: 2px 8px;
+    border-radius: 6px; font-size: 12px; font-weight: 500;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+    vertical-align: middle; transition: opacity 0.3s, color 0.3s;
+  }
+  .cloud-badge.unavailable { opacity: 0.3; color: #555; }
+  .cloud-badge.low { color: #4CAF50; }
+  .cloud-badge.medium { color: #FF9800; }
+  .cloud-badge.high { color: #F44336; }
+
   input[type="range"] {
     -webkit-appearance: none; width: 100%; height: 6px;
     border-radius: 3px; background: linear-gradient(to right, #1a1a3e, #FFD700 50%, #1a1a3e);
     outline: none; cursor: pointer;
   }
   input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 20px; height: 20px;
+    -webkit-appearance: none; width: 24px; height: 24px;
     border-radius: 50%; background: #FFD700; border: 2px solid #0f0f1a;
     box-shadow: 0 0 10px rgba(255,215,0,0.4); cursor: grab;
+  }
+  @media (max-width: 767px) {
+    input[type="range"]::-webkit-slider-thumb { width: 44px; height: 44px; }
   }
 
   .now-btn {
@@ -154,6 +168,99 @@
   .popup-ai-desc { margin: 6px 0; padding: 6px 8px; background: rgba(255,215,0,0.06); border-left: 2px solid rgba(255,215,0,0.3); border-radius: 0 4px 4px 0; font-size: 12px; color: #bbb; font-style: italic; }
   .popup-sun-hours { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 12px; color: #999; }
 
+  /* Bottom sheet (mobile) */
+  .bottom-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 2000;
+    background: rgba(15,15,26,0.96); backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px 16px 0 0; padding: 8px 20px 24px;
+    transform: translateY(100%); transition: transform 0.3s ease;
+    max-height: 45vh; display: none;
+  }
+  .bottom-sheet.open { transform: translateY(0); }
+  .sheet-handle {
+    width: 36px; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.2); margin: 0 auto 12px;
+  }
+  .sheet-close {
+    position: absolute; top: 8px; right: 12px;
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.08); color: #999; font-size: 18px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .sheet-close:hover { color: #e0e0e0; background: rgba(255,255,255,0.15); }
+  .sheet-content { font-size: 14px; line-height: 1.7; }
+  .sheet-name { font-size: 17px; font-weight: 600; margin-bottom: 2px; }
+  .sheet-score { display: inline-block; padding: 2px 10px; border-radius: 5px; font-size: 12px; font-weight: 500; margin-bottom: 8px; }
+  .sheet-row { display: flex; justify-content: space-between; color: #999; font-size: 13px; padding: 2px 0; }
+  .sheet-ai-desc { margin: 8px 0; padding: 6px 8px; background: rgba(255,215,0,0.06); border-left: 2px solid rgba(255,215,0,0.3); border-radius: 0 4px 4px 0; font-size: 12px; color: #bbb; font-style: italic; }
+
+  @media (min-width: 768px) { .bottom-sheet { display: none !important; } }
+
+  /* List toggle button */
+  .list-toggle {
+    position: absolute; top: 144px; right: 16px; z-index: 2000;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(15,15,26,0.92); backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08); color: #e0e0e0;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .list-toggle:hover { background: rgba(30,30,50,0.95); }
+
+  /* Cafe list panel */
+  .cafe-list-panel {
+    display: none; position: fixed; z-index: 1500;
+    background: rgba(15,15,26,0.96); backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08); overflow: hidden;
+    flex-direction: column;
+  }
+  .cafe-list-panel.open { display: flex; }
+
+  /* Mobile: full overlay */
+  @media (max-width: 767px) {
+    .cafe-list-panel { inset: 0; border-radius: 0; padding-top: 70px; }
+  }
+  /* Desktop: 40% right panel */
+  @media (min-width: 768px) {
+    .cafe-list-panel {
+      top: 0; right: 0; bottom: 0; width: 40%;
+      border-left: 1px solid rgba(255,255,255,0.08); border-radius: 0;
+    }
+    #map.split { width: 60% !important; }
+  }
+
+  .list-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+  }
+  .list-sort { display: flex; align-items: center; gap: 6px; }
+  .sort-option { font-size: 14px; color: #666; cursor: pointer; transition: color 0.2s; }
+  .sort-option.active { color: #FFD700; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+  .sort-option:hover { color: #e0e0e0; }
+  .sort-sep { color: #444; font-size: 14px; }
+  .list-count { font-size: 12px; color: #555; }
+  .list-close {
+    width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05); color: #999; font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: color 0.2s;
+  }
+  .list-close:hover { color: #e0e0e0; background: rgba(255,255,255,0.1); }
+
+  .list-items { flex: 1; overflow-y: auto; padding: 4px 0; }
+  .list-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 20px; cursor: pointer; transition: background 0.15s;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .list-item:hover { background: rgba(255,255,255,0.04); }
+  .list-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .list-info { flex: 1; min-width: 0; }
+  .list-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list-meta { font-size: 12px; color: #777; display: flex; gap: 12px; margin-top: 2px; }
+  .list-closed { opacity: 0.4; }
+
   .leaflet-control-zoom { border: 1px solid rgba(255,255,255,0.1) !important; }
   .leaflet-control-zoom a {
     background: rgba(15,15,26,0.9) !important; color: #e0e0e0 !important;
@@ -167,6 +274,27 @@
 <div class="search-bar">
   <input type="text" id="searchInput" placeholder="Stadt oder Adresse suchen..." />
   <button onclick="searchLocation()" id="searchBtn">&#x1F50D;</button>
+</div>
+
+<button class="list-toggle" id="listToggle" onclick="toggleListView()" title="Listenansicht">
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
+  </svg>
+</button>
+
+<div class="cafe-list-panel" id="cafeListPanel">
+  <div class="list-header">
+    <div class="list-sort">
+      <span class="sort-option active" id="sortSunny" onclick="setListSort('sunny')">Sonnigste</span>
+      <span class="sort-sep">·</span>
+      <span class="sort-option" id="sortDistance" onclick="setListSort('distance')">Nächste</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="list-count" id="listCount"></span>
+      <button class="list-close" onclick="toggleListView()" title="Liste schließen">&times;</button>
+    </div>
+  </div>
+  <div class="list-items" id="listItems"></div>
 </div>
 
 <div class="sun-compass" title="Sonnenrichtung">
@@ -198,6 +326,7 @@
     <div>
       <span class="time-value" id="timeValue">--:--</span>
       <span class="time-date" id="dateValue" style="cursor:pointer" onclick="document.getElementById('datePicker').showPicker()"></span>
+      <span class="cloud-badge" id="cloudBadge" title="Bewölkung"></span>
       <input type="date" id="datePicker" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0">
     </div>
     <button class="now-btn" onclick="setNow()">Jetzt</button>
@@ -207,6 +336,12 @@
     <span id="sunriseLabel">Aufgang --:--</span>
     <span id="sunsetLabel">Untergang --:--</span>
   </div>
+</div>
+
+<div class="bottom-sheet" id="bottomSheet">
+  <div class="sheet-handle"></div>
+  <button class="sheet-close" onclick="closeSheet()" title="Schließen">&times;</button>
+  <div class="sheet-content" id="sheetContent"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -228,14 +363,17 @@ let selectedDate = null; // null = today, else 'YYYY-MM-DD'
 let sunTimes = null;
 let loadTimeout = null;
 let isLoading = false;
+let urlReady = false; // suppress updateUrl during init
 let lastBbox = '';
 let enrichedData = null; // Pre-enriched JSON, if available
 let ohLibLoaded = false;
+let weatherData = null; // { hourly: { time: [...], cloud_cover: [...] } }
+let weatherCenter = null; // { lat, lng } for cache invalidation
 const MIN_ZOOM = 13;
 const DEBOUNCE_MS = 2000;
 
 // ── Map Init ───────────────────────────────────
-function initMap(lat, lng, zoom) {
+function initMap(lat, lng, zoom, hasUrlTime) {
   map = L.map('map', {
     center: [lat, lng],
     zoom: zoom || 14,
@@ -249,13 +387,17 @@ function initMap(lat, lng, zoom) {
 
   cafeLayer = L.layerGroup().addTo(map);
 
+  map.on('click', () => {
+    if (document.getElementById('bottomSheet').classList.contains('open')) closeSheet();
+  });
+
   map.on('moveend', () => {
     clearTimeout(loadTimeout);
     loadTimeout = setTimeout(loadData, DEBOUNCE_MS);
     updateUrl();
   });
 
-  initTimeSlider();
+  initTimeSlider(hasUrlTime);
   loadOpeningHoursLib();
   tryLoadEnriched().then(() => loadData());
 }
@@ -347,6 +489,70 @@ function setCache(key, data) {
   }
 }
 
+// ── Weather ───────────────────────────────────
+async function fetchWeather(lat, lng) {
+  try {
+    const rlat = lat.toFixed(2), rlng = lng.toFixed(2);
+    const res = await fetch(`/api/weather?lat=${rlat}&lng=${rlng}`);
+    if (!res.ok) return null;
+    return res.json();
+  } catch { return null; }
+}
+
+function getCloudCover(time) {
+  if (!weatherData?.hourly) return null;
+  const hours = weatherData.hourly.time;
+  const clouds = weatherData.hourly.cloud_cover;
+  const targetMs = time.getTime();
+  // Find nearest hour
+  let bestIdx = 0, bestDiff = Infinity;
+  for (let i = 0; i < hours.length; i++) {
+    const diff = Math.abs(new Date(hours[i]).getTime() - targetMs);
+    if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+  }
+  // Only return if within 1h of a data point
+  return bestDiff < 3600000 ? clouds[bestIdx] : null;
+}
+
+function isDateInForecast() {
+  if (!weatherData?.hourly?.time?.length) return false;
+  const first = new Date(weatherData.hourly.time[0]);
+  const last = new Date(weatherData.hourly.time[weatherData.hourly.time.length - 1]);
+  return selectedTime >= first && selectedTime <= last;
+}
+
+function updateCloudBadge() {
+  const badge = document.getElementById('cloudBadge');
+  if (!isDateInForecast()) {
+    badge.textContent = '☁ —';
+    badge.className = 'cloud-badge unavailable';
+    badge.title = 'Keine Wetterdaten für dieses Datum';
+    return;
+  }
+  const cloud = getCloudCover(selectedTime);
+  if (cloud === null) {
+    badge.textContent = '☁ —';
+    badge.className = 'cloud-badge unavailable';
+    return;
+  }
+  badge.textContent = `☁ ${cloud}%`;
+  const level = cloud > 85 ? 'high' : cloud > 60 ? 'medium' : 'low';
+  badge.className = `cloud-badge ${level}`;
+  badge.title = `Bewölkung: ${cloud}%`;
+}
+
+async function loadWeatherIfNeeded() {
+  const center = map.getCenter();
+  // Skip if we already have weather for this area
+  if (weatherCenter &&
+      Math.abs(center.lat - weatherCenter.lat) < 0.05 &&
+      Math.abs(center.lng - weatherCenter.lng) < 0.05) return;
+  weatherCenter = { lat: center.lat, lng: center.lng };
+  weatherData = await fetchWeather(center.lat, center.lng);
+  updateCloudBadge();
+  updateSunnyScores();
+}
+
 async function loadData() {
   if (map.getZoom() < MIN_ZOOM) {
     cafeLayer.clearLayers();
@@ -369,6 +575,7 @@ async function loadData() {
 
   if (cached) {
     console.log('Cache hit:', cacheKey);
+    loadWeatherIfNeeded();
     processData(cached);
     return;
   }
@@ -377,7 +584,7 @@ async function loadData() {
   showLoading(true);
 
   try {
-    const data = await fetchCafes(bbox);
+    const [data] = await Promise.all([fetchCafes(bbox), loadWeatherIfNeeded()]);
     setCache(cacheKey, data);
     processData(data);
   } catch (err) {
@@ -529,9 +736,22 @@ function calculateScore(cafe, sun) {
   if (cafe.facing === null) return { status: 'unknown', label: 'Unbekannt', color: '#555' };
 
   const diff = angleDiff(sun.bearing, cafe.facing);
-  if (diff < 45) return { status: 'sunny', label: 'Sonnig', color: '#4CAF50' };
-  if (diff < 90) return { status: 'partial', label: 'Teilweise', color: '#FF9800' };
-  return { status: 'shade', label: 'Schatten', color: '#78909C' };
+  let status, label, color;
+  if (diff < 45) { status = 'sunny'; label = 'Sonnig'; color = '#4CAF50'; }
+  else if (diff < 90) { status = 'partial'; label = 'Teilweise'; color = '#FF9800'; }
+  else { status = 'shade'; label = 'Schatten'; color = '#78909C'; }
+
+  // Cloud cover adjustment
+  const cloud = getCloudCover(selectedTime);
+  if (cloud !== null) {
+    if (cloud > 85) {
+      status = 'shade'; label = 'Schatten'; color = '#78909C';
+    } else if (cloud > 60 && status === 'sunny') {
+      status = 'partial'; label = 'Teilweise'; color = '#FF9800';
+    }
+  }
+
+  return { status, label, color };
 }
 
 function estimateSunWindow(cafe, date) {
@@ -635,9 +855,16 @@ function updateSunnyScores() {
       ${windowHtml}
     `, { maxWidth: 280 });
 
+    if (isMobile()) {
+      marker.on('click', () => { openSheet(cafe); });
+      marker.unbindPopup();
+    }
+
     marker.addTo(cafeLayer);
     cafe.marker = marker;
   }
+
+  renderList();
 }
 
 // ── Time Slider ────────────────────────────────
@@ -665,13 +892,14 @@ function updateDateDisplay() {
   document.getElementById('dateValue').textContent = dateStr;
 }
 
-function initTimeSlider() {
+function initTimeSlider(skipSetNow) {
   const center = map.getCenter();
   const baseDate = getBaseDate();
   sunTimes = SunCalc.getTimes(baseDate, center.lat, center.lng);
 
   updateSliderRange();
-  setNow();
+  if (!skipSetNow) setNow();
+  updateDateDisplay();
 
   const slider = document.getElementById('timeSlider');
   slider.addEventListener('input', () => {
@@ -681,6 +909,7 @@ function initTimeSlider() {
     selectedTime = new Date(base);
     selectedTime.setHours(h, m, 0, 0);
     document.getElementById('timeValue').textContent = formatTime(selectedTime);
+    updateCloudBadge();
     updateSunnyScores();
   });
   slider.addEventListener('change', () => updateUrl());
@@ -698,6 +927,7 @@ function initTimeSlider() {
     const mins = parseInt(document.getElementById('timeSlider').value);
     selectedTime = new Date(date);
     selectedTime.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+    updateCloudBadge();
     updateSunnyScores();
     updateUrl();
   });
@@ -714,6 +944,7 @@ function setNow() {
   document.getElementById('timeSlider').value = mins;
   document.getElementById('timeValue').textContent = formatTime(selectedTime);
   document.getElementById('datePicker').value = '';
+  updateCloudBadge();
   updateSunnyScores();
   updateUrl();
 }
@@ -758,6 +989,251 @@ function showToast(msg, type = 'warn', duration = 6000) {
   toastTimer = setTimeout(() => el.classList.remove('active'), duration);
 }
 
+// ── Cafe List View ───────────────────────────
+let listVisible = false;
+let listSortMode = 'sunny'; // 'sunny' or 'distance'
+
+function toggleListView() {
+  listVisible = !listVisible;
+  const panel = document.getElementById('cafeListPanel');
+  const btn = document.getElementById('listToggle');
+  const mapEl = document.getElementById('map');
+
+  panel.classList.toggle('open', listVisible);
+  btn.style.display = listVisible ? 'none' : 'flex';
+
+  if (window.innerWidth >= 768) {
+    mapEl.classList.toggle('split', listVisible);
+    setTimeout(() => map.invalidateSize(), 50);
+  }
+
+  if (listVisible) renderList();
+}
+
+function setListSort(mode) {
+  listSortMode = mode;
+  document.getElementById('sortSunny').classList.toggle('active', mode === 'sunny');
+  document.getElementById('sortDistance').classList.toggle('active', mode === 'distance');
+  renderList();
+}
+
+function renderList() {
+  if (!listVisible) return;
+  const container = document.getElementById('listItems');
+  const center = map.getCenter();
+  const hideClosed = document.getElementById('filterClosed')?.checked;
+
+  const scoreOrder = { sunny: 0, partial: 1, unknown: 2, shade: 3, night: 4 };
+
+  let filtered = cafes.filter(c => {
+    if (hideClosed && c.isOpen === false) return false;
+    return c.score;
+  });
+
+  // Calculate distances
+  for (const c of filtered) {
+    c._dist = map.distance([c.lat, c.lng], [center.lat, center.lng]);
+  }
+
+  // Sort
+  if (listSortMode === 'sunny') {
+    filtered.sort((a, b) => {
+      const sa = scoreOrder[a.score.status] ?? 9;
+      const sb = scoreOrder[b.score.status] ?? 9;
+      return sa !== sb ? sa - sb : a._dist - b._dist;
+    });
+  } else {
+    filtered.sort((a, b) => {
+      if (a._dist !== b._dist) return a._dist - b._dist;
+      return (scoreOrder[a.score.status] ?? 9) - (scoreOrder[b.score.status] ?? 9);
+    });
+  }
+
+  document.getElementById('listCount').textContent = `${filtered.length} Cafés`;
+
+  // Build list items using DOM
+  container.textContent = '';
+
+  for (const cafe of filtered) {
+    const item = document.createElement('div');
+    item.className = 'list-item' + (cafe.isOpen === false ? ' list-closed' : '');
+
+    const dot = document.createElement('div');
+    dot.className = 'list-dot';
+    dot.style.background = cafe.score.color;
+
+    const info = document.createElement('div');
+    info.className = 'list-info';
+
+    const name = document.createElement('div');
+    name.className = 'list-name';
+    name.textContent = cafe.name;
+
+    const meta = document.createElement('div');
+    meta.className = 'list-meta';
+
+    const sunWin = estimateSunWindow(cafe, selectedTime);
+    if (sunWin) {
+      const sunSpan = document.createElement('span');
+      sunSpan.textContent = `☀️ ${formatTime(sunWin.start)}–${formatTime(sunWin.end)}`;
+      meta.appendChild(sunSpan);
+    }
+
+    const distSpan = document.createElement('span');
+    distSpan.textContent = cafe._dist < 1000 ? `${Math.round(cafe._dist)}m` : `${(cafe._dist / 1000).toFixed(1)}km`;
+    meta.appendChild(distSpan);
+
+    if (cafe.isOpen === true) {
+      const openSpan = document.createElement('span');
+      openSpan.textContent = 'Geöffnet';
+      openSpan.style.color = '#4CAF50';
+      meta.appendChild(openSpan);
+    } else if (cafe.isOpen === false) {
+      const closedSpan = document.createElement('span');
+      closedSpan.textContent = 'Geschlossen';
+      closedSpan.style.color = '#78909C';
+      meta.appendChild(closedSpan);
+    }
+
+    info.appendChild(name);
+    info.appendChild(meta);
+    item.appendChild(dot);
+    item.appendChild(info);
+
+    item.addEventListener('click', () => {
+      if (isMobile()) toggleListView();
+      map.setView([cafe.lat, cafe.lng], Math.max(map.getZoom(), 16));
+      if (cafe.marker) {
+        if (isMobile()) {
+          openSheet(cafe);
+        } else {
+          cafe.marker.openPopup();
+        }
+      }
+    });
+
+    container.appendChild(item);
+  }
+}
+
+// ── Bottom Sheet (Mobile) ─────────────────────
+const isMobile = () => window.innerWidth < 768;
+let sheetStartY = 0, sheetCurrentY = 0, sheetDragging = false;
+
+function openSheet(cafe) {
+  const sheet = document.getElementById('bottomSheet');
+  const content = document.getElementById('sheetContent');
+
+  const score = cafe.score || { status: 'unknown', label: '?', color: '#555' };
+  const sunWin = estimateSunWindow(cafe, selectedTime);
+  const facingDir = cafe.facing !== null ? bearingToDirection(cafe.facing) : null;
+  const sourceTag = cafe.facingSource === 'ai' ? ' (AI)' : cafe.facingSource === 'geo' ? ' (Geo)' : '';
+
+  let openStr = '';
+  if (cafe.isOpen === true) {
+    const next = cafe.oh?.getNextChange(selectedTime);
+    openStr = 'Geöffnet' + (next ? ` bis ${formatTime(next)}` : '');
+  } else if (cafe.isOpen === false) {
+    openStr = 'Geschlossen';
+  } else if (cafe.hours) {
+    openStr = cafe.hours;
+  }
+
+  const center = map.getCenter();
+  const dist = map.distance([cafe.lat, cafe.lng], [center.lat, center.lng]);
+  const distStr = dist < 1000 ? `${Math.round(dist)}m` : `${(dist / 1000).toFixed(1)}km`;
+
+  // Build sheet content safely using DOM
+  content.textContent = '';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'sheet-name';
+  nameEl.textContent = cafe.name;
+  content.appendChild(nameEl);
+
+  const scoreEl = document.createElement('span');
+  scoreEl.className = 'sheet-score';
+  scoreEl.style.background = score.color + '22';
+  scoreEl.style.color = score.color;
+  scoreEl.textContent = score.label;
+  content.appendChild(scoreEl);
+
+  if (cafe.aiDescription) {
+    const aiEl = document.createElement('div');
+    aiEl.className = 'sheet-ai-desc';
+    aiEl.textContent = cafe.aiDescription;
+    content.appendChild(aiEl);
+  }
+
+  if (sunWin) {
+    const row = document.createElement('div');
+    row.className = 'sheet-row';
+    row.innerHTML = `<span>&#9728;&#65039; Sonne</span><span>${formatTime(sunWin.start)} – ${formatTime(sunWin.end)}</span>`;
+    content.appendChild(row);
+  }
+
+  if (openStr) {
+    const row = document.createElement('div');
+    row.className = 'sheet-row';
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = 'Öffnungszeiten';
+    const valSpan = document.createElement('span');
+    valSpan.textContent = openStr;
+    if (cafe.isOpen === true) valSpan.style.color = '#4CAF50';
+    if (cafe.isOpen === false) valSpan.style.color = '#78909C';
+    row.appendChild(labelSpan);
+    row.appendChild(valSpan);
+    content.appendChild(row);
+  }
+
+  const facingRow = document.createElement('div');
+  facingRow.className = 'sheet-row';
+  facingRow.innerHTML = `<span>Ausrichtung</span><span>${facingDir ? facingDir + sourceTag : 'Unbekannt'}</span>`;
+  content.appendChild(facingRow);
+
+  const distRow = document.createElement('div');
+  distRow.className = 'sheet-row';
+  distRow.innerHTML = `<span>Entfernung</span><span>${distStr}</span>`;
+  content.appendChild(distRow);
+
+  sheet.style.display = 'block';
+  requestAnimationFrame(() => sheet.classList.add('open'));
+}
+
+function closeSheet() {
+  const sheet = document.getElementById('bottomSheet');
+  sheet.classList.remove('open');
+  setTimeout(() => { sheet.style.display = 'none'; }, 300);
+}
+
+// Touch-to-dismiss
+document.getElementById('bottomSheet').addEventListener('touchstart', (e) => {
+  sheetStartY = e.touches[0].clientY;
+  sheetDragging = true;
+  document.getElementById('bottomSheet').style.transition = 'none';
+}, { passive: true });
+
+document.getElementById('bottomSheet').addEventListener('touchmove', (e) => {
+  if (!sheetDragging) return;
+  sheetCurrentY = e.touches[0].clientY - sheetStartY;
+  if (sheetCurrentY > 0) {
+    document.getElementById('bottomSheet').style.transform = `translateY(${sheetCurrentY}px)`;
+  }
+}, { passive: true });
+
+document.getElementById('bottomSheet').addEventListener('touchend', () => {
+  if (!sheetDragging) return;
+  sheetDragging = false;
+  const sheet = document.getElementById('bottomSheet');
+  sheet.style.transition = 'transform 0.3s ease';
+  if (sheetCurrentY > 80) {
+    closeSheet();
+  } else {
+    sheet.style.transform = 'translateY(0)';
+  }
+  sheetCurrentY = 0;
+});
+
 // ── URL State ─────────────────────────────────
 function readUrlState() {
   const p = new URLSearchParams(location.search);
@@ -772,7 +1248,7 @@ function readUrlState() {
 }
 
 function updateUrl() {
-  if (!map) return;
+  if (!map || !urlReady) return;
   const c = map.getCenter();
   const params = new URLSearchParams();
   params.set('lat', c.lat.toFixed(4));
@@ -796,23 +1272,27 @@ function updateUrl() {
   }
 
   if (state.lat !== null && state.lng !== null) {
-    initMap(state.lat, state.lng, state.z || 14);
+    initMap(state.lat, state.lng, state.z || 14, !!state.t);
     if (state.t) {
       const [h, m] = state.t.split(':').map(Number);
       selectedTime.setHours(h, m, 0, 0);
       const mins = h * 60 + m;
       document.getElementById('timeSlider').value = mins;
       document.getElementById('timeValue').textContent = formatTime(selectedTime);
+      updateCloudBadge();
       updateSunnyScores();
     }
+    // Defer urlReady to next microtask so any pending moveend events are suppressed
+    Promise.resolve().then(() => { urlReady = true; updateUrl(); });
   } else if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      (pos) => initMap(pos.coords.latitude, pos.coords.longitude),
-      () => initMap(53.5511, 9.9937),
+      (pos) => { initMap(pos.coords.latitude, pos.coords.longitude); urlReady = true; },
+      () => { initMap(53.5511, 9.9937); urlReady = true; },
       { timeout: 5000 }
     );
   } else {
     initMap(53.5511, 9.9937);
+    urlReady = true;
   }
 })();
 

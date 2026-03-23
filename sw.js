@@ -1,4 +1,4 @@
-const CACHE = 'sunny-cafe-v2';
+const CACHE = 'sunny-cafe-v3';
 const PRECACHE = ['/', '/favicon.svg'];
 
 self.addEventListener('install', e => {
