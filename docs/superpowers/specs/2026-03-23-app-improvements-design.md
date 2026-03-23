@@ -26,7 +26,7 @@ Frontend → /api/cafes?bbox=53.5,9.9,53.6,10.1
          → response to CDN + client
 ```
 
-- BBox rounded to 3 decimal places (~100m grid) for cache key normalization
+- BBox rounded to 3 decimal places (~100m grid) by the frontend before requesting — maximizes CDN hit rate. Proxy only validates 4 valid numbers.
 - `Cache-Control: s-maxage=3600, stale-while-revalidate=86400` — 1h fresh, 24h stale-while-revalidate
 - Zero dependencies, plain `fetch()` to Overpass
 - Frontend changes only the Overpass URL to `/api/cafes?bbox=...`
