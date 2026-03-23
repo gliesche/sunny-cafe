@@ -185,6 +185,10 @@
   <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div> Sonnig</div>
   <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div> Teilweise</div>
   <div class="legend-item"><div class="legend-dot" style="background:#78909C"></div> Schatten</div>
+  <label class="legend-item" style="cursor:pointer;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06)">
+    <input type="checkbox" id="filterClosed" checked style="accent-color:#FFD700" onchange="updateSunnyScores()">
+    <span>Geschlossene ausblenden</span>
+  </label>
 </div>
 
 <div id="map"></div>
@@ -226,6 +230,7 @@ let loadTimeout = null;
 let isLoading = false;
 let lastBbox = '';
 let enrichedData = null; // Pre-enriched JSON, if available
+let ohLibLoaded = false;
 const MIN_ZOOM = 13;
 const DEBOUNCE_MS = 2000;
 
@@ -251,10 +256,18 @@ function initMap(lat, lng, zoom) {
   });
 
   initTimeSlider();
+  loadOpeningHoursLib();
   tryLoadEnriched().then(() => loadData());
 }
 
 // ── Pre-Enriched Data ─────────────────────────
+function loadOpeningHoursLib() {
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/opening_hours@3/build/opening_hours.min.js';
+  s.onload = () => { ohLibLoaded = true; updateSunnyScores(); };
+  document.head.appendChild(s);
+}
+
 async function tryLoadEnriched() {
   // Try loading pre-enriched JSON for known cities
   const cities = ['hamburg', 'berlin', 'muenchen', 'koeln', 'frankfurt'];
@@ -440,6 +453,17 @@ function processData(data) {
     }
   }
 
+  // Parse opening hours if library loaded
+  if (ohLibLoaded && typeof opening_hours !== 'undefined') {
+    for (const cafe of cafes) {
+      if (cafe.hours) {
+        try {
+          cafe.oh = new opening_hours(cafe.hours, { address: { country_code: 'de' } });
+        } catch { cafe.oh = null; }
+      }
+    }
+  }
+
   updateSunnyScores();
   document.getElementById('cafeCount').textContent = cafes.length;
   const src = getCache(getCacheKey(getBbox())) ? ' Cafes (Cache)' : ' Cafes geladen';
@@ -549,24 +573,31 @@ function updateSunnyScores() {
   arrow.style.transform = `rotate(${sun.bearing}deg)`;
 
   cafeLayer.clearLayers();
+  const hideClosed = document.getElementById('filterClosed')?.checked;
 
   for (const cafe of cafes) {
     const score = calculateScore(cafe, sun);
     cafe.score = score;
 
+    // Opening hours
+    cafe.isOpen = cafe.oh ? cafe.oh.getState(selectedTime) : null;
+    if (hideClosed && cafe.isOpen === false) continue;
+
+    const markerOpacity = cafe.isOpen === false ? 0.35 : 0.85;
+
     const marker = L.circleMarker([cafe.lat, cafe.lng], {
       radius: 8,
       fillColor: score.color,
-      fillOpacity: 0.85,
+      fillOpacity: markerOpacity,
       color: 'rgba(255,255,255,0.15)',
       weight: 1
     });
 
     // Build popup
-    const window = estimateSunWindow(cafe, selectedTime);
+    const sunWin = estimateSunWindow(cafe, selectedTime);
     let windowHtml = '';
-    if (window) {
-      windowHtml = `<div class="popup-sun-hours">&#9728; Sonne ca. ${formatTime(window.start)} – ${formatTime(window.end)}</div>`;
+    if (sunWin) {
+      windowHtml = `<div class="popup-sun-hours">&#9728; Sonne ca. ${formatTime(sunWin.start)} – ${formatTime(sunWin.end)}</div>`;
     }
 
     const facingDir = cafe.facing !== null ? bearingToDirection(cafe.facing) : null;
@@ -582,13 +613,25 @@ function updateSunnyScores() {
     const confidenceDot = cafe.aiConfidence === 'high' ? '🟢'
       : cafe.aiConfidence === 'medium' ? '🟡' : cafe.aiConfidence === 'low' ? '🔴' : '';
 
+    // Opening hours display
+    let openHtml = '';
+    if (cafe.isOpen === true) {
+      const nextChange = cafe.oh.getNextChange(selectedTime);
+      const closingStr = nextChange ? ` bis ${formatTime(nextChange)}` : '';
+      openHtml = `<div class="popup-detail" style="color:#4CAF50">Geöffnet${closingStr}</div>`;
+    } else if (cafe.isOpen === false) {
+      openHtml = `<div class="popup-detail" style="color:#78909C">Geschlossen</div>`;
+    } else if (cafe.hours) {
+      openHtml = `<div class="popup-detail">${cafe.hours}</div>`;
+    }
+
     marker.bindPopup(`
       <div class="popup-name">${cafe.name}</div>
       <span class="popup-status ${score.status}">${score.label}</span>
       ${confidenceDot ? `<span style="font-size:10px;margin-left:4px">${confidenceDot}</span>` : ''}
       ${aiDesc}
       <div class="popup-detail">${facingStr}</div>
-      ${cafe.hours ? `<div class="popup-detail">${cafe.hours}</div>` : ''}
+      ${openHtml}
       ${windowHtml}
     `, { maxWidth: 280 });
 
