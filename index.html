@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sunny Cafe Finder</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #0f0f1a; color: #e0e0e0; overflow: hidden; height: 100dvh; }
+
+  #map { width: 100%; height: 100dvh; z-index: 1; }
+
+  /* Search bar */
+  .search-bar {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 1000; display: flex; gap: 8px; width: min(420px, calc(100% - 32px));
+  }
+  .search-bar input {
+    flex: 1; padding: 12px 16px; border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px; background: rgba(15,15,26,0.92); color: #e0e0e0;
+    font-size: 15px; backdrop-filter: blur(16px); outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-bar input:focus { border-color: rgba(255,215,0,0.5); }
+  .search-bar input::placeholder { color: #666; }
+  .search-bar button {
+    padding: 12px 16px; border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px; background: rgba(15,15,26,0.92); color: #FFD700;
+    font-size: 15px; cursor: pointer; backdrop-filter: blur(16px);
+    transition: background 0.2s;
+  }
+  .search-bar button:hover { background: rgba(255,215,0,0.15); }
+
+  /* Time slider panel */
+  .time-panel {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 1000;
+    background: rgba(15,15,26,0.92); backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .time-header {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .time-label { font-size: 13px; color: #888; }
+  .time-value { font-size: 22px; font-weight: 600; color: #FFD700; font-variant-numeric: tabular-nums; }
+  .time-date { font-size: 13px; color: #666; margin-left: 8px; }
+  .sun-times { font-size: 12px; color: #555; display: flex; justify-content: space-between; }
+
+  input[type="range"] {
+    -webkit-appearance: none; width: 100%; height: 6px;
+    border-radius: 3px; background: linear-gradient(to right, #1a1a3e, #FFD700 50%, #1a1a3e);
+    outline: none; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px;
+    border-radius: 50%; background: #FFD700; border: 2px solid #0f0f1a;
+    box-shadow: 0 0 10px rgba(255,215,0,0.4); cursor: grab;
+  }
+
+  .now-btn {
+    padding: 4px 10px; border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 6px; background: transparent; color: #FFD700;
+    font-size: 11px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .now-btn:hover { background: rgba(255,215,0,0.1); }
+
+  /* Legend */
+  .legend {
+    position: absolute; bottom: 120px; left: 16px; z-index: 1000;
+    background: rgba(15,15,26,0.92); backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+    padding: 10px 14px; font-size: 12px; line-height: 1.8;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  /* Sun compass */
+  .sun-compass {
+    position: absolute; top: 80px; right: 16px; z-index: 1000;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(15,15,26,0.92); backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sun-arrow {
+    width: 40px; height: 40px; transition: transform 0.3s ease;
+  }
+
+  /* Stats badge */
+  .stats-badge {
+    position: absolute; top: 80px; left: 16px; z-index: 1000;
+    background: rgba(15,15,26,0.92); backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+    padding: 8px 12px; font-size: 12px; color: #888;
+  }
+  .stats-badge strong { color: #e0e0e0; }
+
+  /* Loading overlay */
+  .loading {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 2000; background: rgba(15,15,26,0.95); border-radius: 12px;
+    padding: 20px 28px; font-size: 14px; color: #FFD700;
+    display: none; align-items: center; gap: 10px;
+    border: 1px solid rgba(255,215,0,0.2);
+  }
+  .loading.active { display: flex; }
+  .loading .spinner {
+    width: 18px; height: 18px; border: 2px solid rgba(255,215,0,0.2);
+    border-top-color: #FFD700; border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Leaflet popup styling */
+  .leaflet-popup-content-wrapper {
+    background: rgba(15,15,26,0.95) !important; color: #e0e0e0 !important;
+    border-radius: 10px !important; border: 1px solid rgba(255,255,255,0.1) !important;
+    backdrop-filter: blur(16px);
+  }
+  .leaflet-popup-tip { background: rgba(15,15,26,0.95) !important; }
+  .leaflet-popup-content { margin: 12px 16px !important; font-size: 13px !important; line-height: 1.6 !important; }
+  .popup-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .popup-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; margin: 4px 0; }
+  .popup-status.sunny { background: rgba(76,175,80,0.2); color: #4CAF50; }
+  .popup-status.partial { background: rgba(255,152,0,0.2); color: #FF9800; }
+  .popup-status.shade { background: rgba(120,144,156,0.2); color: #78909C; }
+  .popup-status.night { background: rgba(100,100,120,0.2); color: #666; }
+  .popup-detail { color: #888; font-size: 12px; }
+  .popup-ai-desc { margin: 6px 0; padding: 6px 8px; background: rgba(255,215,0,0.06); border-left: 2px solid rgba(255,215,0,0.3); border-radius: 0 4px 4px 0; font-size: 12px; color: #bbb; font-style: italic; }
+  .popup-sun-hours { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 12px; color: #999; }
+
+  .leaflet-control-zoom { border: 1px solid rgba(255,255,255,0.1) !important; }
+  .leaflet-control-zoom a {
+    background: rgba(15,15,26,0.9) !important; color: #e0e0e0 !important;
+    border-color: rgba(255,255,255,0.08) !important;
+  }
+  .leaflet-control-zoom a:hover { background: rgba(30,30,50,0.95) !important; }
+</style>
+</head>
+<body>
+
+<div class="search-bar">
+  <input type="text" id="searchInput" placeholder="Stadt oder Adresse suchen..." />
+  <button onclick="searchLocation()" id="searchBtn">&#x1F50D;</button>
+</div>
+
+<div class="sun-compass" title="Sonnenrichtung">
+  <svg class="sun-arrow" id="sunArrow" viewBox="0 0 40 40">
+    <circle cx="20" cy="20" r="8" fill="#FFD700" opacity="0.3"/>
+    <circle cx="20" cy="20" r="5" fill="#FFD700"/>
+    <line x1="20" y1="20" x2="20" y2="4" stroke="#FFD700" stroke-width="2.5" stroke-linecap="round"/>
+  </svg>
+</div>
+
+<div class="stats-badge" id="stats">
+  <strong id="cafeCount">0</strong> Cafes geladen
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div> Sonnig</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div> Teilweise</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#78909C"></div> Schatten</div>
+</div>
+
+<div id="map"></div>
+
+<div class="time-panel">
+  <div class="time-header">
+    <div>
+      <span class="time-value" id="timeValue">--:--</span>
+      <span class="time-date" id="dateValue"></span>
+    </div>
+    <button class="now-btn" onclick="setNow()">Jetzt</button>
+  </div>
+  <input type="range" id="timeSlider" min="0" max="1440" step="5" />
+  <div class="sun-times">
+    <span id="sunriseLabel">Aufgang --:--</span>
+    <span id="sunsetLabel">Untergang --:--</span>
+  </div>
+</div>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <span>Lade Cafes...</span>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
+<script>
+// ── State ──────────────────────────────────────
+let map, cafeLayer;
+let cafes = [];
+let streets = [];
+let selectedTime = new Date();
+let sunTimes = null;
+let loadTimeout = null;
+let isLoading = false;
+let lastBbox = '';
+let enrichedData = null; // Pre-enriched JSON, if available
+const MIN_ZOOM = 13;
+const DEBOUNCE_MS = 2000;
+
+// ── Map Init ───────────────────────────────────
+function initMap(lat, lng) {
+  map = L.map('map', {
+    center: [lat, lng],
+    zoom: 14,
+    zoomControl: true
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+    maxZoom: 19
+  }).addTo(map);
+
+  cafeLayer = L.layerGroup().addTo(map);
+
+  map.on('moveend', () => {
+    clearTimeout(loadTimeout);
+    loadTimeout = setTimeout(loadData, DEBOUNCE_MS);
+  });
+
+  initTimeSlider();
+  tryLoadEnriched().then(() => loadData());
+}
+
+// ── Pre-Enriched Data ─────────────────────────
+async function tryLoadEnriched() {
+  // Try loading pre-enriched JSON for known cities
+  const cities = ['hamburg', 'berlin', 'muenchen', 'koeln', 'frankfurt'];
+  for (const city of cities) {
+    try {
+      const res = await fetch(`data/${city}.json`);
+      if (res.ok) {
+        const data = await res.json();
+        enrichedData = enrichedData || {};
+        for (const cafe of data.cafes) {
+          enrichedData[cafe.id] = cafe;
+        }
+        console.log(`Pre-enriched: ${data.cafes.length} Cafés aus ${data.city}`);
+      }
+    } catch {}
+  }
+}
+
+// ── Overpass API ───────────────────────────────
+async function fetchOverpass(query, retries = 2) {
+  const url = 'https://overpass-api.de/api/interpreter';
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(url, {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(query)
+    });
+    if ((res.status === 429 || res.status === 504) && attempt < retries) {
+      const wait = (attempt + 1) * 4000;
+      console.warn(`Overpass ${res.status} — retry in ${wait}ms`);
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+    if (!res.ok) throw new Error('Overpass API error: ' + res.status);
+    return res.json();
+  }
+}
+
+function getBbox() {
+  const b = map.getBounds();
+  return `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
+}
+
+// ── Cache ──────────────────────────────────────
+const CACHE_PREFIX = 'suncafe_';
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
+
+function getCacheKey(bbox) {
+  // Round to ~100m grid so nearby viewports share cache
+  const parts = bbox.split(',').map(n => parseFloat(n).toFixed(3));
+  return CACHE_PREFIX + parts.join(',');
+}
+
+function getCache(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (Date.now() - cached.ts > CACHE_TTL) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return cached.data;
+  } catch { return null; }
+}
+
+function setCache(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+  } catch {
+    // localStorage full — evict oldest entries
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k.startsWith(CACHE_PREFIX)) keys.push(k);
+    }
+    keys.sort().slice(0, Math.ceil(keys.length / 2)).forEach(k => localStorage.removeItem(k));
+    try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
+  }
+}
+
+async function loadData() {
+  if (map.getZoom() < MIN_ZOOM) {
+    cafeLayer.clearLayers();
+    cafes = [];
+    document.getElementById('cafeCount').textContent = '0';
+    document.getElementById('stats').querySelector('strong').nextSibling.textContent =
+      ' Cafes — bitte reinzoomen (Zoom ' + MIN_ZOOM + '+)';
+    return;
+  }
+
+  const bbox = getBbox();
+
+  // Skip if already loading or viewport barely changed
+  if (isLoading) return;
+  if (bbox === lastBbox) return;
+  lastBbox = bbox;
+
+  const cacheKey = getCacheKey(bbox);
+  const cached = getCache(cacheKey);
+
+  if (cached) {
+    console.log('Cache hit:', cacheKey);
+    processData(cached);
+    return;
+  }
+
+  isLoading = true;
+  showLoading(true);
+
+  try {
+    // Single combined query: cafés first, then streets only near those cafés
+    const data = await fetchOverpass(`
+      [out:json][timeout:30];
+      (
+        node["amenity"="cafe"]["outdoor_seating"](${bbox});
+        way["amenity"="cafe"]["outdoor_seating"](${bbox});
+      )->.cafes;
+      .cafes out center body;
+      way["highway"~"^(residential|tertiary|secondary|primary|pedestrian|living_street|unclassified)$"](around.cafes:80)->.streets;
+      .streets out geom;
+    `);
+
+    setCache(cacheKey, data);
+    processData(data);
+  } catch (err) {
+    console.error('Load error:', err);
+    lastBbox = ''; // Allow retry on error
+    document.getElementById('stats').querySelector('strong').nextSibling.textContent =
+      ' — Fehler beim Laden. Kurz warten, dann verschieben.';
+  }
+
+  isLoading = false;
+  showLoading(false);
+}
+
+function processData(data) {
+  // Split elements into cafes and streets
+  const cafeElements = [];
+  const streetElements = [];
+  for (const e of data.elements) {
+    if (e.tags && e.tags.amenity === 'cafe') cafeElements.push(e);
+    else if (e.tags && e.tags.highway && e.geometry) streetElements.push(e);
+  }
+
+  // Parse cafes + merge pre-enriched AI data
+  cafes = cafeElements
+    .map(e => {
+      const ai = enrichedData?.[e.id];
+      return {
+        id: e.id,
+        lat: e.lat || (e.center && e.center.lat),
+        lng: e.lon || (e.center && e.center.lon),
+        name: e.tags.name || 'Unbekanntes Cafe',
+        outdoor: e.tags.outdoor_seating,
+        cuisine: e.tags.cuisine || '',
+        hours: e.tags.opening_hours || '',
+        facing: null,
+        score: null,
+        marker: null,
+        // AI enrichment
+        aiDirection: ai?.ai_direction || null,
+        aiDescription: ai?.ai_description || null,
+        aiSunPeriod: ai?.ai_sun_period || null,
+        aiConfidence: ai?.ai_confidence || null,
+      };
+    })
+    .filter(c => c.lat && c.lng);
+
+  // Remove duplicates (nodes and ways for same cafe)
+  const seen = new Set();
+  cafes = cafes.filter(c => {
+    const key = c.lat.toFixed(5) + ',' + c.lng.toFixed(5);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  // Parse streets as arrays of coordinate pairs
+  streets = streetElements
+    .filter(e => e.geometry.length > 1)
+    .map(e => e.geometry.map(n => [n.lat, n.lon]));
+
+  // Calculate facing directions — prefer AI enrichment over geometry heuristic
+  const dirToBearing = { N:0, NE:45, E:90, SE:135, S:180, SW:225, W:270, NW:315 };
+  for (const cafe of cafes) {
+    if (cafe.aiDirection && cafe.aiDirection !== 'unknown') {
+      cafe.facing = dirToBearing[cafe.aiDirection] ?? null;
+      cafe.facingSource = 'ai';
+    } else {
+      cafe.facing = findFacingDirection(cafe);
+      cafe.facingSource = cafe.facing !== null ? 'geo' : null;
+    }
+  }
+
+  updateSunnyScores();
+  document.getElementById('cafeCount').textContent = cafes.length;
+  const src = getCache(getCacheKey(getBbox())) ? ' Cafes (Cache)' : ' Cafes geladen';
+  document.getElementById('stats').querySelector('strong').nextSibling.textContent = src;
+}
+
+// ── Geometry Utils ─────────────────────────────
+function nearestPointOnSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return { lat: ax, lng: ay, dist: Math.hypot(px - ax, py - ay) };
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+  const nx = ax + t * dx, ny = ay + t * dy;
+  return { lat: nx, lng: ny, dist: Math.hypot(px - nx, py - ny) };
+}
+
+function compassBearing(lat1, lng1, lat2, lng2) {
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const la1 = lat1 * Math.PI / 180, la2 = lat2 * Math.PI / 180;
+  const y = Math.sin(dLng) * Math.cos(la2);
+  const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dLng);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+
+function findFacingDirection(cafe) {
+  let minDist = Infinity;
+  let nearestLat = null, nearestLng = null;
+
+  for (const street of streets) {
+    for (let i = 0; i < street.length - 1; i++) {
+      const p = nearestPointOnSegment(
+        cafe.lat, cafe.lng,
+        street[i][0], street[i][1],
+        street[i + 1][0], street[i + 1][1]
+      );
+      if (p.dist < minDist) {
+        minDist = p.dist;
+        nearestLat = p.lat;
+        nearestLng = p.lng;
+      }
+    }
+  }
+
+  if (nearestLat === null) return null;
+  return compassBearing(cafe.lat, cafe.lng, nearestLat, nearestLng);
+}
+
+// ── Sunny Score ────────────────────────────────
+function sunBearing(time, lat, lng) {
+  const pos = SunCalc.getPosition(time, lat, lng);
+  // SunCalc: azimuth 0=South, PI/2=West → convert to compass (0=North)
+  const bearing = ((pos.azimuth * 180 / Math.PI) + 180) % 360;
+  return { bearing, altitude: pos.altitude * 180 / Math.PI };
+}
+
+function angleDiff(a, b) {
+  const d = Math.abs(a - b);
+  return Math.min(d, 360 - d);
+}
+
+function calculateScore(cafe, sun) {
+  if (sun.altitude < 5) return { status: 'night', label: 'Nacht', color: '#444' };
+  if (cafe.facing === null) return { status: 'unknown', label: 'Unbekannt', color: '#555' };
+
+  const diff = angleDiff(sun.bearing, cafe.facing);
+  if (diff < 45) return { status: 'sunny', label: 'Sonnig', color: '#4CAF50' };
+  if (diff < 90) return { status: 'partial', label: 'Teilweise', color: '#FF9800' };
+  return { status: 'shade', label: 'Schatten', color: '#78909C' };
+}
+
+function estimateSunWindow(cafe, date) {
+  if (cafe.facing === null || !sunTimes) return null;
+  const sunrise = sunTimes.sunrise;
+  const sunset = sunTimes.sunset;
+  let start = null, end = null;
+  const step = 15 * 60 * 1000; // 15 min
+
+  for (let t = sunrise.getTime(); t <= sunset.getTime(); t += step) {
+    const sun = sunBearing(new Date(t), cafe.lat, cafe.lng);
+    const diff = angleDiff(sun.bearing, cafe.facing);
+    if (diff < 90 && sun.altitude >= 5) {
+      if (start === null) start = new Date(t);
+      end = new Date(t);
+    }
+  }
+
+  if (!start) return null;
+  return { start, end: new Date(end.getTime() + step) };
+}
+
+function formatTime(d) {
+  return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+}
+
+function bearingToDirection(b) {
+  const dirs = ['N', 'NO', 'O', 'SO', 'S', 'SW', 'W', 'NW'];
+  return dirs[Math.round(b / 45) % 8];
+}
+
+// ── Rendering ──────────────────────────────────
+function updateSunnyScores() {
+  const center = map.getCenter();
+  const sun = sunBearing(selectedTime, center.lat, center.lng);
+
+  // Update sun compass
+  const arrow = document.getElementById('sunArrow');
+  arrow.style.transform = `rotate(${sun.bearing}deg)`;
+
+  cafeLayer.clearLayers();
+
+  for (const cafe of cafes) {
+    const score = calculateScore(cafe, sun);
+    cafe.score = score;
+
+    const marker = L.circleMarker([cafe.lat, cafe.lng], {
+      radius: 8,
+      fillColor: score.color,
+      fillOpacity: 0.85,
+      color: 'rgba(255,255,255,0.15)',
+      weight: 1
+    });
+
+    // Build popup
+    const window = estimateSunWindow(cafe, selectedTime);
+    let windowHtml = '';
+    if (window) {
+      windowHtml = `<div class="popup-sun-hours">&#9728; Sonne ca. ${formatTime(window.start)} – ${formatTime(window.end)}</div>`;
+    }
+
+    const facingDir = cafe.facing !== null ? bearingToDirection(cafe.facing) : null;
+    const sourceTag = cafe.facingSource === 'ai' ? ' (AI)' : cafe.facingSource === 'geo' ? ' (Geo)' : '';
+    const facingStr = facingDir
+      ? `Ausrichtung: ${facingDir}${sourceTag}`
+      : 'Ausrichtung: unbekannt';
+
+    const aiDesc = cafe.aiDescription
+      ? `<div class="popup-ai-desc">${cafe.aiDescription}</div>`
+      : '';
+
+    const confidenceDot = cafe.aiConfidence === 'high' ? '🟢'
+      : cafe.aiConfidence === 'medium' ? '🟡' : cafe.aiConfidence === 'low' ? '🔴' : '';
+
+    marker.bindPopup(`
+      <div class="popup-name">${cafe.name}</div>
+      <span class="popup-status ${score.status}">${score.label}</span>
+      ${confidenceDot ? `<span style="font-size:10px;margin-left:4px">${confidenceDot}</span>` : ''}
+      ${aiDesc}
+      <div class="popup-detail">${facingStr}</div>
+      ${cafe.hours ? `<div class="popup-detail">${cafe.hours}</div>` : ''}
+      ${windowHtml}
+    `, { maxWidth: 280 });
+
+    marker.addTo(cafeLayer);
+    cafe.marker = marker;
+  }
+}
+
+// ── Time Slider ────────────────────────────────
+function initTimeSlider() {
+  const center = map.getCenter();
+  sunTimes = SunCalc.getTimes(new Date(), center.lat, center.lng);
+
+  const slider = document.getElementById('timeSlider');
+  const sunriseMin = sunTimes.sunrise.getHours() * 60 + sunTimes.sunrise.getMinutes();
+  const sunsetMin = sunTimes.sunset.getHours() * 60 + sunTimes.sunset.getMinutes();
+
+  slider.min = Math.max(0, sunriseMin - 30);
+  slider.max = Math.min(1440, sunsetMin + 30);
+
+  // Set to now
+  setNow();
+
+  slider.addEventListener('input', () => {
+    const mins = parseInt(slider.value);
+    const h = Math.floor(mins / 60), m = mins % 60;
+    selectedTime = new Date();
+    selectedTime.setHours(h, m, 0, 0);
+    document.getElementById('timeValue').textContent = formatTime(selectedTime);
+    updateSunnyScores();
+  });
+
+  document.getElementById('sunriseLabel').textContent = `Aufgang ${formatTime(sunTimes.sunrise)}`;
+  document.getElementById('sunsetLabel').textContent = `Untergang ${formatTime(sunTimes.sunset)}`;
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
+  document.getElementById('dateValue').textContent = dateStr;
+}
+
+function setNow() {
+  selectedTime = new Date();
+  const mins = selectedTime.getHours() * 60 + selectedTime.getMinutes();
+  document.getElementById('timeSlider').value = mins;
+  document.getElementById('timeValue').textContent = formatTime(selectedTime);
+  updateSunnyScores();
+}
+
+// ── Search ─────────────────────────────────────
+async function searchLocation() {
+  const query = document.getElementById('searchInput').value.trim();
+  if (!query) return;
+
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
+      { headers: { 'Accept-Language': 'de' } }
+    );
+    const data = await res.json();
+    if (data.length > 0) {
+      const { lat, lon } = data[0];
+      map.setView([parseFloat(lat), parseFloat(lon)], 15);
+      initTimeSlider();
+    }
+  } catch (err) {
+    console.error('Search error:', err);
+  }
+}
+
+document.getElementById('searchInput').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') searchLocation();
+});
+
+// ── Loading ────────────────────────────────────
+function showLoading(active) {
+  document.getElementById('loading').classList.toggle('active', active);
+}
+
+// ── Startup ────────────────────────────────────
+(function init() {
+  // Try geolocation, fallback to Hamburg
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => initMap(pos.coords.latitude, pos.coords.longitude),
+      () => initMap(53.5511, 9.9937), // Hamburg
+      { timeout: 5000 }
+    );
+  } else {
+    initMap(53.5511, 9.9937);
+  }
+})();
+</script>
+</body>
+</html>
