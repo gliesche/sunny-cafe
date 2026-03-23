@@ -64,11 +64,11 @@ git commit -m "feat: add Overpass API proxy with CDN caching"
 
 - [ ] **Step 1: Add URL reading on startup**
 
-Add `readUrlState()` that parses `lat`, `lng`, `z`, `t`, `d` from `URLSearchParams`. Replace IIFE `init()` to use URL params if present, else fall back to geolocation/Hamburg.
+Add `readUrlState()` that parses `lat`, `lng`, `z`, `t`, `d`, `q` from `URLSearchParams`. Replace IIFE `init()` to use URL params if present, else fall back to geolocation/Hamburg. If `q` present, set `searchInput.value` (cosmetic only — lat/lng is authoritative).
 
 - [ ] **Step 2: Add URL writing on state change**
 
-Add `updateUrl()` using `history.replaceState()`. Call it from: map `moveend`, slider `input`, date change, `setNow()`, `searchLocation()`.
+Add `updateUrl()` using `history.replaceState()`. Include `q` param from current search input value if non-empty. Call at "settled" moments only (no extra debounce): map `moveend`, slider `change` (mouseup/touchend, not `input`), date picker `change`, `setNow()`, `searchLocation()`. Do NOT call on slider `input` during drag — URL lags are fine, nobody reads it mid-drag.
 
 - [ ] **Step 3: Verify in browser**
 
