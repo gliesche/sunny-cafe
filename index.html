@@ -193,7 +193,8 @@
   <div class="time-header">
     <div>
       <span class="time-value" id="timeValue">--:--</span>
-      <span class="time-date" id="dateValue"></span>
+      <span class="time-date" id="dateValue" style="cursor:pointer" onclick="document.getElementById('datePicker').showPicker()"></span>
+      <input type="date" id="datePicker" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0">
     </div>
     <button class="now-btn" onclick="setNow()">Jetzt</button>
   </div>
@@ -219,6 +220,7 @@ let map, cafeLayer;
 let cafes = [];
 let streets = [];
 let selectedTime = new Date();
+let selectedDate = null; // null = today, else 'YYYY-MM-DD'
 let sunTimes = null;
 let loadTimeout = null;
 let isLoading = false;
@@ -596,43 +598,79 @@ function updateSunnyScores() {
 }
 
 // ── Time Slider ────────────────────────────────
-function initTimeSlider() {
-  const center = map.getCenter();
-  sunTimes = SunCalc.getTimes(new Date(), center.lat, center.lng);
+function getBaseDate() {
+  if (selectedDate) {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return new Date();
+}
 
+function updateSliderRange() {
   const slider = document.getElementById('timeSlider');
   const sunriseMin = sunTimes.sunrise.getHours() * 60 + sunTimes.sunrise.getMinutes();
   const sunsetMin = sunTimes.sunset.getHours() * 60 + sunTimes.sunset.getMinutes();
-
   slider.min = Math.max(0, sunriseMin - 30);
   slider.max = Math.min(1440, sunsetMin + 30);
+  document.getElementById('sunriseLabel').textContent = `Aufgang ${formatTime(sunTimes.sunrise)}`;
+  document.getElementById('sunsetLabel').textContent = `Untergang ${formatTime(sunTimes.sunset)}`;
+}
 
-  // Set to now
+function updateDateDisplay() {
+  const date = getBaseDate();
+  const dateStr = date.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
+  document.getElementById('dateValue').textContent = dateStr;
+}
+
+function initTimeSlider() {
+  const center = map.getCenter();
+  const baseDate = getBaseDate();
+  sunTimes = SunCalc.getTimes(baseDate, center.lat, center.lng);
+
+  updateSliderRange();
   setNow();
 
+  const slider = document.getElementById('timeSlider');
   slider.addEventListener('input', () => {
     const mins = parseInt(slider.value);
     const h = Math.floor(mins / 60), m = mins % 60;
-    selectedTime = new Date();
+    const base = getBaseDate();
+    selectedTime = new Date(base);
     selectedTime.setHours(h, m, 0, 0);
     document.getElementById('timeValue').textContent = formatTime(selectedTime);
     updateSunnyScores();
   });
   slider.addEventListener('change', () => updateUrl());
 
-  document.getElementById('sunriseLabel').textContent = `Aufgang ${formatTime(sunTimes.sunrise)}`;
-  document.getElementById('sunsetLabel').textContent = `Untergang ${formatTime(sunTimes.sunset)}`;
+  updateDateDisplay();
 
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
-  document.getElementById('dateValue').textContent = dateStr;
+  document.getElementById('datePicker').addEventListener('change', (e) => {
+    if (!e.target.value) return;
+    selectedDate = e.target.value;
+    const date = getBaseDate();
+    const center = map.getCenter();
+    sunTimes = SunCalc.getTimes(date, center.lat, center.lng);
+    updateSliderRange();
+    updateDateDisplay();
+    const mins = parseInt(document.getElementById('timeSlider').value);
+    selectedTime = new Date(date);
+    selectedTime.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+    updateSunnyScores();
+    updateUrl();
+  });
 }
 
 function setNow() {
+  selectedDate = null;
   selectedTime = new Date();
+  const center = map.getCenter();
+  sunTimes = SunCalc.getTimes(new Date(), center.lat, center.lng);
+  updateSliderRange();
+  updateDateDisplay();
   const mins = selectedTime.getHours() * 60 + selectedTime.getMinutes();
   document.getElementById('timeSlider').value = mins;
   document.getElementById('timeValue').textContent = formatTime(selectedTime);
+  document.getElementById('datePicker').value = '';
   updateSunnyScores();
   updateUrl();
 }
@@ -698,6 +736,7 @@ function updateUrl() {
   params.set('lng', c.lng.toFixed(4));
   params.set('z', map.getZoom());
   params.set('t', formatTime(selectedTime));
+  if (selectedDate) params.set('d', selectedDate);
   const q = document.getElementById('searchInput').value.trim();
   if (q) params.set('q', q);
   history.replaceState(null, '', '?' + params.toString());
@@ -707,6 +746,11 @@ function updateUrl() {
 (function init() {
   const state = readUrlState();
   if (state.q) document.getElementById('searchInput').value = state.q;
+
+  if (state.d) {
+    selectedDate = state.d;
+    document.getElementById('datePicker').value = state.d;
+  }
 
   if (state.lat !== null && state.lng !== null) {
     initMap(state.lat, state.lng, state.z || 14);
