@@ -70,7 +70,8 @@ GET https://api.open-meteo.com/v1/forecast?latitude=53.55&longitude=9.99
     &hourly=cloud_cover&forecast_days=7
 ```
 
-- API proxy fetches weather alongside cafe data (one request per viewport, not per cafe)
+- **Separate endpoint:** `GET /api/weather?lat=53.55&lng=9.99` — not merged with cafe proxy. Reasons: different cache TTLs (weather 15min, cafes 1h), independent failure (cafes load if Open-Meteo is down), simpler functions, frontend parallelizes both requests
+- `Cache-Control: s-maxage=900, stale-while-revalidate=3600` — 15min fresh, 1h stale
 - **Score adjustment:** Sunny score weighted by cloud cover. 80% cloudy → south-facing cafe becomes "Teilweise" instead "Sonnig"
 - **Display:** Small cloud icon next to time slider: "15%" or "65%" — shows cloud cover for selected hour
 - **Date combo:** Works with date picker — Open-Meteo delivers 7-day forecast
