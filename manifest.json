@@ -1,0 +1,17 @@
+{
+  "name": "Sunny Cafe Finder",
+  "short_name": "SunnyCafe",
+  "description": "Finde Cafés mit sonniger Terrasse",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f1a",
+  "theme_color": "#FFD700",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
