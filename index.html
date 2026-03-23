@@ -228,10 +228,10 @@ const MIN_ZOOM = 13;
 const DEBOUNCE_MS = 2000;
 
 // ── Map Init ───────────────────────────────────
-function initMap(lat, lng) {
+function initMap(lat, lng, zoom) {
   map = L.map('map', {
     center: [lat, lng],
-    zoom: 14,
+    zoom: zoom || 14,
     zoomControl: true
   });
 
@@ -245,6 +245,7 @@ function initMap(lat, lng) {
   map.on('moveend', () => {
     clearTimeout(loadTimeout);
     loadTimeout = setTimeout(loadData, DEBOUNCE_MS);
+    updateUrl();
   });
 
   initTimeSlider();
@@ -617,6 +618,7 @@ function initTimeSlider() {
     document.getElementById('timeValue').textContent = formatTime(selectedTime);
     updateSunnyScores();
   });
+  slider.addEventListener('change', () => updateUrl());
 
   document.getElementById('sunriseLabel').textContent = `Aufgang ${formatTime(sunTimes.sunrise)}`;
   document.getElementById('sunsetLabel').textContent = `Untergang ${formatTime(sunTimes.sunset)}`;
@@ -632,6 +634,7 @@ function setNow() {
   document.getElementById('timeSlider').value = mins;
   document.getElementById('timeValue').textContent = formatTime(selectedTime);
   updateSunnyScores();
+  updateUrl();
 }
 
 // ── Search ─────────────────────────────────────
@@ -649,6 +652,7 @@ async function searchLocation() {
       const { lat, lon } = data[0];
       map.setView([parseFloat(lat), parseFloat(lon)], 15);
       initTimeSlider();
+      updateUrl();
     }
   } catch (err) {
     console.error('Search error:', err);
@@ -673,13 +677,51 @@ function showToast(msg, type = 'warn', duration = 6000) {
   toastTimer = setTimeout(() => el.classList.remove('active'), duration);
 }
 
+// ── URL State ─────────────────────────────────
+function readUrlState() {
+  const p = new URLSearchParams(location.search);
+  return {
+    lat: p.has('lat') ? parseFloat(p.get('lat')) : null,
+    lng: p.has('lng') ? parseFloat(p.get('lng')) : null,
+    z: p.has('z') ? parseInt(p.get('z')) : null,
+    t: p.get('t'),
+    d: p.get('d'),
+    q: p.get('q'),
+  };
+}
+
+function updateUrl() {
+  if (!map) return;
+  const c = map.getCenter();
+  const params = new URLSearchParams();
+  params.set('lat', c.lat.toFixed(4));
+  params.set('lng', c.lng.toFixed(4));
+  params.set('z', map.getZoom());
+  params.set('t', formatTime(selectedTime));
+  const q = document.getElementById('searchInput').value.trim();
+  if (q) params.set('q', q);
+  history.replaceState(null, '', '?' + params.toString());
+}
+
 // ── Startup ────────────────────────────────────
 (function init() {
-  // Try geolocation, fallback to Hamburg
-  if (navigator.geolocation) {
+  const state = readUrlState();
+  if (state.q) document.getElementById('searchInput').value = state.q;
+
+  if (state.lat !== null && state.lng !== null) {
+    initMap(state.lat, state.lng, state.z || 14);
+    if (state.t) {
+      const [h, m] = state.t.split(':').map(Number);
+      selectedTime.setHours(h, m, 0, 0);
+      const mins = h * 60 + m;
+      document.getElementById('timeSlider').value = mins;
+      document.getElementById('timeValue').textContent = formatTime(selectedTime);
+      updateSunnyScores();
+    }
+  } else if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (pos) => initMap(pos.coords.latitude, pos.coords.longitude),
-      () => initMap(53.5511, 9.9937), // Hamburg
+      () => initMap(53.5511, 9.9937),
       { timeout: 5000 }
     );
   } else {
