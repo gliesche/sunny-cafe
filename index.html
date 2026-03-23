@@ -112,6 +112,22 @@
     border: 1px solid rgba(255,215,0,0.2);
   }
   .loading.active { display: flex; }
+
+  /* Toast notification */
+  .toast {
+    position: absolute; top: 72px; left: 50%; transform: translateX(-50%);
+    z-index: 3000; padding: 10px 16px; border-radius: 10px;
+    font-size: 13px; max-width: min(400px, calc(100% - 32px));
+    backdrop-filter: blur(16px); opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .toast.active { opacity: 1; pointer-events: auto; }
+  .toast.warn {
+    background: rgba(255,152,0,0.15); border: 1px solid rgba(255,152,0,0.3); color: #FF9800;
+  }
+  .toast.error {
+    background: rgba(244,67,54,0.15); border: 1px solid rgba(244,67,54,0.3); color: #F44336;
+  }
   .loading .spinner {
     width: 18px; height: 18px; border: 2px solid rgba(255,215,0,0.2);
     border-top-color: #FFD700; border-radius: 50%;
@@ -187,6 +203,8 @@
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <div class="loading" id="loading">
   <div class="spinner"></div>
   <span>Lade Cafes...</span>
@@ -261,10 +279,11 @@ async function fetchOverpass(query, retries = 2) {
     });
     if ((res.status === 429 || res.status === 504) && attempt < retries) {
       const wait = (attempt + 1) * 4000;
-      console.warn(`Overpass ${res.status} — retry in ${wait}ms`);
+      showToast(`Overpass API überlastet — neuer Versuch in ${wait/1000}s...`, 'warn');
       await new Promise(r => setTimeout(r, wait));
       continue;
     }
+    if (res.status === 429) throw new Error('rate-limit');
     if (!res.ok) throw new Error('Overpass API error: ' + res.status);
     return res.json();
   }
@@ -359,9 +378,12 @@ async function loadData() {
     processData(data);
   } catch (err) {
     console.error('Load error:', err);
-    lastBbox = ''; // Allow retry on error
-    document.getElementById('stats').querySelector('strong').nextSibling.textContent =
-      ' — Fehler beim Laden. Kurz warten, dann verschieben.';
+    lastBbox = '';
+    if (err.message === 'rate-limit') {
+      showToast('Rate-Limit erreicht — bitte 30s warten, dann Karte verschieben.', 'error', 10000);
+    } else {
+      showToast('Fehler beim Laden. Kurz warten, dann verschieben.', 'warn');
+    }
   }
 
   isLoading = false;
@@ -649,9 +671,18 @@ document.getElementById('searchInput').addEventListener('keypress', (e) => {
   if (e.key === 'Enter') searchLocation();
 });
 
-// ── Loading ────────────────────────────────────
+// ── Loading & Toast ────────────────────────────
 function showLoading(active) {
   document.getElementById('loading').classList.toggle('active', active);
+}
+
+let toastTimer = null;
+function showToast(msg, type = 'warn', duration = 6000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} active`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('active'), duration);
 }
 
 // ── Startup ────────────────────────────────────
